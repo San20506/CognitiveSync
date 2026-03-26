@@ -1,0 +1,59 @@
+"""FastAPI application entry point."""
+
+from __future__ import annotations
+
+import logging
+from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from ingestion.scheduler import configure_scheduler, scheduler
+from api.routes import audit, cascade, config, model, pipeline, recommendations, scores
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Start scheduler on startup; shut it down gracefully on shutdown."""
+    configure_scheduler()
+    scheduler.start()
+    logger.info("Scheduler started")
+    yield
+    scheduler.shutdown(wait=False)
+    logger.info("Scheduler stopped")
+
+
+app = FastAPI(
+    title="CognitiveSync API",
+    version="0.1.0",
+    description="Privacy-first burnout prediction platform — internal API.",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    lifespan=lifespan,
+)
+
+# Internal-only CORS — no external origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Power BI dev only
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT"],
+    allow_headers=["Authorization", "Content-Type"],
+)
+
+
+@app.get("/health")
+async def health_check() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+app.include_router(scores.router, prefix="/api/v1", tags=["scores"])
+app.include_router(cascade.router, prefix="/api/v1", tags=["cascade"])
+app.include_router(pipeline.router, prefix="/api/v1", tags=["pipeline"])
+app.include_router(recommendations.router, prefix="/api/v1", tags=["recommendations"])
+app.include_router(config.router, prefix="/api/v1", tags=["config"])
+app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
+app.include_router(model.router, prefix="/api/v1", tags=["model"])
