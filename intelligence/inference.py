@@ -19,7 +19,7 @@ from uuid import UUID
 
 import torch
 
-from intelligence.gnn_model import BurnoutGAT, MC_PASSES as MC_GAT_PASSES  # noqa: F401
+from intelligence.gnn_model import BurnoutGAT, SmallBurnoutGAT  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -27,18 +27,15 @@ MC_DROPOUT_PASSES = 5
 
 FEATURE_NAMES: list[str] = [
     "meeting_density",
-    "after_hours_meetings",
-    "focus_blocks",
-    "email_response_latency",
-    "meeting_accept_rate",
-    "message_volume",
-    "after_hours_messages",
-    "response_time_slack",
-    "mention_frequency",
-    "commit_frequency",
-    "after_hours_commits",
-    "pr_review_load",
+    "after_hours_ratio",
+    "response_latency_avg",
+    "focus_time_blocks",
+    "msg_volume_daily",
+    "msg_response_time",
+    "mention_load",
     "context_switch_rate",
+    "hrv_avg",
+    "sleep_score",
 ]
 
 
@@ -72,7 +69,7 @@ class InferencePipeline:
     def __init__(self, model_registry_path: Path, device: str = "cuda") -> None:
         self._registry = model_registry_path
         self._device = device
-        self._model: BurnoutGAT | None = None
+        self._model: BurnoutGAT | SmallBurnoutGAT | None = None
         self._device_obj: torch.device = torch.device("cpu")
 
     def load_model(self, version: str = "latest") -> None:
@@ -120,7 +117,17 @@ class InferencePipeline:
                 f"Model checkpoint not found: {model_path}"
             )
 
-        model = BurnoutGAT()
+        # Detect architecture from metrics.json if present
+        import json as _json
+        meta_path = version_dir / "metrics.json"
+        is_small = False
+        if meta_path.exists():
+            meta = _json.loads(meta_path.read_text())
+            arch = meta.get("architecture", "")
+            n_feat = meta.get("n_features", 13)
+            is_small = "Small" in arch or n_feat <= 10
+
+        model: BurnoutGAT | SmallBurnoutGAT = SmallBurnoutGAT() if is_small else BurnoutGAT()
         device = torch.device(
             self._device if torch.cuda.is_available() else "cpu"
         )
@@ -195,8 +202,8 @@ class InferencePipeline:
         # attention_weights: [E, HEADS_2] — average over heads → [E]
 
         # Aggregate attention received per destination node
-        N = len(node_ids)
-        node_attention = torch.zeros(N, device=device)
+        n_nodes = len(node_ids)
+        node_attention = torch.zeros(n_nodes, device=device)
 
         if data.edge_index.shape[1] > 0:
             edge_index = data.edge_index
@@ -232,7 +239,7 @@ class InferencePipeline:
         )
         logger.info(
             "Scored %d nodes, run_id=%s, high_risk=%d",
-            N,
+            n_nodes,
             run_id,
             high_risk_count,
         )

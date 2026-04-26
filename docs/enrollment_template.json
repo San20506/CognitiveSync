@@ -1,0 +1,18 @@
+{
+  "_comment": "CognitiveSync enrollment template — copy and fill per employee. Remove _comment fields before submitting.",
+  "pseudo_id": "REPLACE_WITH_UUID_V5_OF_EMPLOYEE_ID",
+  "display_name_hash": "OPTIONAL_SHA256_OF_DISPLAY_NAME",
+  "team_id": "ENGINEERING",
+  "role": "Software Engineer",
+  "seniority": "SENIOR",
+  "timezone": "UTC+5:30",
+  "initial_profile": {
+    "_comment": "All fields optional. Omit entire block if no profile data available.",
+    "role_risk_modifier": 0.0,
+    "work_hours_start": "09:00",
+    "work_hours_end": "18:00",
+    "expected_after_hours_ratio": 0.1,
+    "known_stressors": [],
+    "notes_hash": null
+  }
+}

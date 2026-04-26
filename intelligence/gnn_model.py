@@ -91,11 +91,11 @@ class BurnoutGAT(nn.Module):
             conv2_out = self.conv2(x, edge_index, return_attention_weights=True)  # type: ignore[assignment]
             x_out, (_edge_index_out, alpha) = conv2_out
             x_out = self.elu(x_out)
-            scores: torch.Tensor = self.sigmoid(self.classifier(x_out))
-            return scores, alpha
+            logits: torch.Tensor = self.classifier(x_out)
+            return logits, alpha
 
         x = self.elu(self.conv2(x, edge_index))
-        return self.sigmoid(self.classifier(x))
+        return self.classifier(x)  # raw logits — sigmoid applied by BCEWithLogitsLoss or caller
 
     @torch.no_grad()  # type: ignore[misc]
     def mc_dropout_predict(
@@ -123,12 +123,82 @@ class BurnoutGAT(nn.Module):
         raw_passes: list[torch.Tensor] = []
         for _ in range(n_passes):
             pass_out = self.forward(x, edge_index)
-            # forward() returns Tensor when return_attention=False
+            # forward() returns raw logits; apply sigmoid for probability output
             assert isinstance(pass_out, torch.Tensor)
-            raw_passes.append(pass_out)
+            raw_passes.append(torch.sigmoid(pass_out))
         self.eval()
 
         passes = torch.stack(raw_passes)  # [n_passes, N, 1]
+        mean = passes.mean(dim=0)
+        std = passes.std(dim=0)
+        return mean, mean - 1.96 * std, mean + 1.96 * std
+
+
+# Trained architecture — matches final-v1 / csv-v2-tuned checkpoints
+# 10 features, smaller capacity, dropout=0.1
+SMALL_IN_CHANNELS = 10
+SMALL_FEATURE_COLS = [
+    "meeting_density",
+    "after_hours_ratio",
+    "response_latency_avg",
+    "focus_time_blocks",
+    "msg_volume_daily",
+    "msg_response_time",
+    "mention_load",
+    "context_switch_rate",
+    "hrv_avg",
+    "sleep_score",
+]
+
+
+class SmallBurnoutGAT(nn.Module):
+    """Compact 2-layer GAT — matches the final-v1 trained checkpoint.
+
+    Architecture: GATConv(10→32×2) → BN → GATConv(64→16×1) → Linear(16→1)
+    """
+
+    def __init__(self, dropout: float = 0.1) -> None:
+        super().__init__()
+        self.conv1 = GATConv(SMALL_IN_CHANNELS, 32, heads=2, dropout=dropout, concat=True)
+        self.bn1 = nn.BatchNorm1d(64)
+        self.conv2 = GATConv(64, 16, heads=1, dropout=dropout, concat=False)
+        self.classifier = nn.Linear(16, 1)
+        self.elu = nn.ELU()
+        self.drop = nn.Dropout(dropout)
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        edge_index: torch.Tensor,
+        edge_attr: torch.Tensor | None = None,
+        return_attention: bool = False,
+    ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        x = self.elu(self.bn1(self.conv1(x, edge_index)))
+        x = self.drop(x)
+
+        if return_attention:
+            conv2_out = self.conv2(x, edge_index, return_attention_weights=True)  # type: ignore[assignment]
+            x_out, (_ei, alpha) = conv2_out  # type: ignore[misc]
+            return self.classifier(self.elu(x_out)), alpha
+
+        x = self.elu(self.conv2(x, edge_index))
+        return self.classifier(x)
+
+    @torch.no_grad()  # type: ignore[misc]
+    def mc_dropout_predict(
+        self,
+        x: torch.Tensor,
+        edge_index: torch.Tensor,
+        n_passes: int = MC_PASSES,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        self.train()
+        raw_passes: list[torch.Tensor] = []
+        for _ in range(n_passes):
+            out = self.forward(x, edge_index)
+            assert isinstance(out, torch.Tensor)
+            raw_passes.append(torch.sigmoid(out))
+        self.eval()
+        passes = torch.stack(raw_passes)
         mean = passes.mean(dim=0)
         std = passes.std(dim=0)
         return mean, mean - 1.96 * std, mean + 1.96 * std

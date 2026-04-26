@@ -1,0 +1,5 @@
+-- Create schemas required by ORM models
+CREATE SCHEMA IF NOT EXISTS features;
+CREATE SCHEMA IF NOT EXISTS scores;
+CREATE SCHEMA IF NOT EXISTS audit;
+CREATE SCHEMA IF NOT EXISTS config;

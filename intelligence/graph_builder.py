@@ -18,23 +18,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from torch_geometric.data import Data
 
 from ingestion.db.models import EdgeSignal, FeatureVector
+from intelligence.edges import load_edges
+from intelligence.features import get_feature_matrix, load_features
 
 logger = logging.getLogger(__name__)
 
 FEATURE_NAMES = [
     "meeting_density",
-    "after_hours_meetings",
-    "focus_blocks",
-    "email_response_latency",
-    "meeting_accept_rate",
-    "message_volume",
-    "after_hours_messages",
-    "response_time_slack",
-    "mention_frequency",
-    "commit_frequency",
-    "after_hours_commits",
-    "pr_review_load",
+    "after_hours_ratio",
+    "response_latency_avg",
+    "focus_time_blocks",
+    "msg_volume_daily",
+    "msg_response_time",
+    "mention_load",
     "context_switch_rate",
+    "hrv_avg",
+    "sleep_score",
 ]
 
 
@@ -90,7 +89,7 @@ class GraphBuilder:
             window_end,
         )
 
-        G: nx.DiGraph = nx.DiGraph()
+        G: nx.DiGraph = nx.DiGraph()  # noqa: N806
 
         # Add nodes with feature attrs; collect node_ids in insertion order
         node_ids: list[UUID] = []
@@ -113,7 +112,7 @@ class GraphBuilder:
 
         return BuiltGraph(nx_graph=G, node_ids=node_ids, pyg_data=pyg_data)
 
-    def to_pyg(self, G: nx.DiGraph, node_ids: list[UUID]) -> Data:
+    def to_pyg(self, G: nx.DiGraph, node_ids: list[UUID]) -> Data:  # noqa: N803
         """Convert NetworkX graph to PyTorch Geometric Data object.
 
         Returns Data(x: Tensor[N×13], edge_index: Tensor[2×E], edge_attr: Tensor[E×1])
@@ -160,3 +159,56 @@ class GraphBuilder:
         )
 
         return Data(x=x, edge_index=edge_index, edge_attr=edge_attr)
+
+    def build_from_csv(
+        self,
+        features_path: str,
+        interactions_path: str,
+    ) -> BuiltGraph:
+        """Build graph from CSV files using Akshaya's feature/edge extractors.
+
+        Args:
+            features_path: Path to features.csv
+            interactions_path: Path to interactions.csv
+
+        Returns:
+            BuiltGraph with nx_graph, node_ids, and pyg_data populated.
+        """
+        from intelligence.features import FEATURE_COLS as _ALL_FEAT_COLS
+
+        features_df = load_features(features_path)
+        edges_df = load_edges(interactions_path)
+
+        # Deterministic node ordering by sorted pseudo_id
+        ordered_ids: list[UUID] = sorted(
+            [UUID(pid) for pid in features_df["pseudo_id"].tolist()]
+        )
+        ordered_strs = [str(pid) for pid in ordered_ids]
+
+        G: nx.DiGraph = nx.DiGraph()  # noqa: N806
+
+        # Add nodes — select only the 10 features the trained model expects
+        x_matrix = get_feature_matrix(features_df, ordered_strs)  # [N, 13]
+        feat_indices = [_ALL_FEAT_COLS.index(f) for f in FEATURE_NAMES]
+        for i, pid in enumerate(ordered_ids):
+            attrs = {
+                feat: float(x_matrix[i, feat_indices[j]])
+                for j, feat in enumerate(FEATURE_NAMES)
+            }
+            G.add_node(pid, **attrs)
+
+        # Add edges (source/target are string pseudo_ids in edges_df)
+        pid_set = set(ordered_strs)
+        for _, row in edges_df.iterrows():
+            src_str, dst_str = str(row["source"]), str(row["target"])
+            if src_str in pid_set and dst_str in pid_set:
+                G.add_edge(UUID(src_str), UUID(dst_str), weight=float(row["weight"]))
+
+        logger.info(
+            "Built CSV graph: %d nodes, %d edges",
+            G.number_of_nodes(),
+            G.number_of_edges(),
+        )
+
+        pyg_data = self.to_pyg(G, ordered_ids)
+        return BuiltGraph(nx_graph=G, node_ids=ordered_ids, pyg_data=pyg_data)
