@@ -26,7 +26,7 @@ A live burnout prediction platform running on your local machine:
 ## Step 1 — Start the stack (one command)
 
 ```bash
-cd /home/sandy/Documents/Projects/CognitiveSync
+cd /path/to/CognitiveSync
 
 # Use the pre-configured local dev env
 cp .env.local .env
@@ -34,10 +34,14 @@ cp .env.local .env
 docker-compose up --build
 ```
 
-Wait for both services to be ready:
+Docker pulls python:3.11-slim + CPU-only PyTorch (~500MB total, one-time).  
+Migrations run automatically via the `migrate` service before the API starts.
+
+Wait for:
 ```
-cognitivesync-db   | database system is ready to accept connections
-cognitivesync-api  | Application startup complete.
+cognitivesync-db      | database system is ready to accept connections
+cognitivesync-migrate | INFO [alembic] Running upgrade -> 893cdc022dcc
+cognitivesync-api     | Application startup complete.
 ```
 
 **API:** http://localhost:8000  
@@ -48,14 +52,7 @@ cognitivesync-api  | Application startup complete.
 
 ## Step 2 — Seed the database (first run only)
 
-Run Alembic migrations if the DB is fresh:
-
-```bash
-DATABASE_URL="postgresql+asyncpg://cognitivesync:cognitivesync_local@localhost:5432/cognitivesync" \
-uv run alembic upgrade head
-```
-
-Then trigger the first pipeline run (seeds all 120 employees into the DB):
+Migrations run automatically via docker-compose. Just trigger the first pipeline run:
 
 ```bash
 # Mint an IT Admin token

@@ -18,6 +18,20 @@ services:
       timeout: 3s
       retries: 10
 
+  migrate:
+    build: .
+    container_name: cognitivesync-migrate
+    command: uv run alembic upgrade head
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://cognitivesync:cognitivesync_local@db:5432/cognitivesync
+      AUDIT_DATABASE_URL: postgresql+asyncpg://cognitivesync:cognitivesync_local@db:5432/cognitivesync
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build: .
     container_name: cognitivesync-api
@@ -31,12 +45,14 @@ services:
       AUDIT_DATABASE_URL: postgresql+asyncpg://cognitivesync:cognitivesync_local@db:5432/cognitivesync
       ADAPTER_MODE: mock
     volumes:
-      - ./models:/app/models:ro
-      - ./data:/app/data:ro
-      - ./secrets:/app/secrets:ro
+      - ./models:/app/models:ro       # checkpoint lives outside image
+      - ./data:/app/data:ro           # synthetic CSVs
+      - ./secrets:/app/secrets:ro     # JWT keypair
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   pg_data:

@@ -1,0 +1,27 @@
+# Never send these to Docker build context
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.env
+.env.local
+secrets/
+
+# Large directories
+CognitiveSync/          # has 2GB+ node_modules
+node_modules/
+htmlcov/
+.coverage
+artifacts/
+
+# Dev/IDE
+.obsidian/
+.sisyphus/
+.claude/
+
+# Models go in via volume mount at runtime
+models/
+
+# Data goes in via volume mount at runtime
+data/
