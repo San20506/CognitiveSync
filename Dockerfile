@@ -6,19 +6,35 @@ RUN pip install uv --quiet
 
 COPY pyproject.toml uv.lock ./
 
-# Install CPU-only torch first (avoids pulling 2GB of CUDA libs in Docker)
-RUN uv pip install --system \
-    torch==2.2.0+cpu torchvision==0.17.0+cpu \
-    --index-url https://download.pytorch.org/whl/cpu
+# Install CPU-only torch — bypasses the CUDA packages in uv.lock
+RUN pip install \
+    torch==2.2.0+cpu \
+    torch-geometric==2.5.3 \
+    --index-url https://download.pytorch.org/whl/cpu \
+    --quiet
 
-# Install remaining deps (torch already satisfied, uv skips it)
-RUN uv sync --no-dev --frozen
+# Export all remaining deps from lockfile, skipping torch (already installed)
+# This avoids uv sync pulling CUDA torch from the lockfile
+RUN uv export --no-dev --frozen \
+    --no-emit-package torch \
+    --no-emit-package torch-geometric \
+    --no-emit-package torchvision \
+    --no-emit-package torchaudio \
+    -o /tmp/requirements.txt \
+    && pip install -r /tmp/requirements.txt --quiet
 
-COPY . .
+# Copy source (after deps — layer cache hits on rebuild)
+COPY api/ api/
+COPY intelligence/ intelligence/
+COPY ingestion/ ingestion/
+COPY config/ config/
+COPY output/ output/
+COPY alembic/ alembic/
+COPY alembic.ini .
 
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
-CMD ["uv", "run", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

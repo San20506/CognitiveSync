@@ -31,7 +31,7 @@ cd /path/to/CognitiveSync
 # Use the pre-configured local dev env
 cp .env.local .env
 
-docker-compose up --build
+bash start_demo.sh
 ```
 
 Docker pulls python:3.11-slim + CPU-only PyTorch (~500MB total, one-time).  
@@ -166,7 +166,7 @@ uv run python scripts/mint_demo_token.py --role it_admin
 **Docker won't start**
 ```bash
 docker-compose down -v   # wipe volumes
-docker-compose up --build
+bash start_demo.sh
 # Then re-run Alembic and pipeline
 ```
 
