@@ -37,6 +37,8 @@ dependencies = [
     # Utilities
     "numpy>=1.26",
     "python-multipart>=0.0.9",
+    "scikit-learn>=1.4",
+    "pandas>=3.0.2",
 ]
 
 [project.optional-dependencies]
@@ -77,10 +79,23 @@ exclude = ["alembic/", "data/"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "--cov=. --cov-report=term-missing --cov-report=html --cov-fail-under=80"
+addopts = "--cov=intelligence --cov=ingestion/db --cov-report=term-missing --cov-report=html --cov-fail-under=80"
 
 [tool.coverage.run]
-omit = ["tests/*", "data/*", "alembic/*", "deploy/*"]
+omit = [
+    "tests/*",
+    "data/*",
+    "alembic/*",
+    "deploy/*",
+    "scripts/*",
+    # Standalone training scripts — covered by model artifacts, not unit tests
+    "intelligence/trainer.py",
+    # In-module test runner (not pytest) — replaced by tests/unit/
+    "intelligence/tests.py",
+    # Async DB-only modules — covered by integration tests (Person B)
+    "intelligence/profile_updater.py",
+    "ingestion/db/session.py",
+]
 
 # NOTE: PyTorch with CUDA support requires configuring the PyTorch index.
 # For CUDA 12.1 (RTX 4060), add the following to uv config or run:

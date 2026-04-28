@@ -47,8 +47,9 @@ class PipelineStatusResponse(BaseModel):
     message: str = ""
 
 
-async def _run_pipeline(run_id: UUID, db: AsyncSession | None) -> None:
+async def _run_pipeline(run_id: UUID) -> None:
     """Execute full pipeline: CSV → graph → GNN → cascade → persist scores."""
+    from ingestion.db.session import AsyncSessionLocal
     from intelligence.cascade import CascadePropagator
     from intelligence.graph_builder import GraphBuilder
     from intelligence.inference import InferencePipeline
@@ -89,28 +90,12 @@ async def _run_pipeline(run_id: UUID, db: AsyncSession | None) -> None:
         window_end = datetime.now(UTC)
         high_risk_count = sum(1 for ns in scored.node_scores.values() if ns.burnout_score >= 0.70)
 
-        # Step 4: Persist scores + update profiles
-        if db is not None:
-            await _persist_scores(run_id, window_end, scored, cascade_results, db)
-            from intelligence.profile_updater import update_profiles
-            await update_profiles(run_id, scored.node_scores, cascade_results, db)
-            await db.commit()
-        else:
-            _run_registry[run_id]["scores"] = {
-                str(pid): {
-                    "burnout_score": ns.burnout_score,
-                    "confidence_low": ns.confidence_low,
-                    "confidence_high": ns.confidence_high,
-                    "top_features": ns.top_features,
-                    "cascade_risk": cascade_results[pid].cascade_risk
-                    if pid in cascade_results
-                    else 0.0,
-                    "cascade_sources": [str(s) for s in cascade_results[pid].cascade_sources]
-                    if pid in cascade_results
-                    else [],
-                }
-                for pid, ns in scored.node_scores.items()
-            }
+        # Step 4: Persist scores + update profiles (always use a fresh session)
+        from intelligence.profile_updater import update_profiles
+        async with AsyncSessionLocal() as fresh_db:
+            await _persist_scores(run_id, window_end, scored, cascade_results, fresh_db)
+            await update_profiles(run_id, scored.node_scores, cascade_results, fresh_db)
+            await fresh_db.commit()
 
         _run_registry[run_id].update({
             "status": PipelineStatus.COMPLETED,
@@ -174,7 +159,6 @@ async def _persist_scores(
 )
 async def trigger_pipeline_run(
     token: TokenPayload = require_role(UserRole.IT_ADMIN),
-    db: AsyncSession = Depends(get_db),
 ) -> PipelineRunResponse:
     """Trigger a full scoring pipeline run.
 
@@ -194,8 +178,8 @@ async def trigger_pipeline_run(
         "message": "",
     }
 
-    # Fire and forget — do not await
-    asyncio.create_task(_run_pipeline(run_id, db))
+    # Fire and forget — task opens its own DB session to avoid request-scope teardown
+    asyncio.create_task(_run_pipeline(run_id))
 
     return PipelineRunResponse(
         run_id=run_id,

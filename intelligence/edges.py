@@ -39,6 +39,9 @@ def load_edges(interactions_path: str) -> pd.DataFrame:
         "target_pseudo_id": "target",
     })
 
+    if df.empty:
+        return pd.DataFrame(columns=["source", "target", "weight"])
+
     # Normalise weight per interaction type by org-level max
     for itype in df["interaction_type"].unique():
         mask = df["interaction_type"] == itype
@@ -61,9 +64,14 @@ def load_edges(interactions_path: str) -> pd.DataFrame:
         .max()
         .reset_index()
     )
-    edges[["source", "target"]] = pd.DataFrame(
-        edges["pair"].tolist(), index=edges.index
-    )
+
+    if edges.empty:
+        return pd.DataFrame(columns=["source", "target", "weight"])
+
+    unpacked = pd.DataFrame(edges["pair"].tolist(), index=edges.index, columns=["source", "target"])
+    edges = edges.drop(columns=["pair"])
+    edges["source"] = unpacked["source"]
+    edges["target"] = unpacked["target"]
     edges = edges[["source", "target", "weight"]].copy()
     edges["weight"] = edges["weight"].clip(0.0, 1.0)
 

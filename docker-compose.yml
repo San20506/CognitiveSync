@@ -18,5 +18,25 @@ services:
       timeout: 3s
       retries: 10
 
+  api:
+    build: .
+    container_name: cognitivesync-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://cognitivesync:cognitivesync_local@db:5432/cognitivesync
+      AUDIT_DATABASE_URL: postgresql+asyncpg://cognitivesync:cognitivesync_local@db:5432/cognitivesync
+      ADAPTER_MODE: mock
+    volumes:
+      - ./models:/app/models:ro
+      - ./data:/app/data:ro
+      - ./secrets:/app/secrets:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   pg_data:
