@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CognitiveSync — Burnout Risk Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #23273a;
+    --border: #2e3347; --text: #e8eaf0; --muted: #8b91a8;
+    --red: #ef4444; --orange: #f97316; --yellow: #eab308;
+    --green: #22c55e; --blue: #3b82f6; --purple: #a855f7;
+    --accent: #6366f1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  header h1 span { color: var(--accent); }
+  .role-bar { display: flex; align-items: center; gap: 10px; }
+  .role-bar label { color: var(--muted); font-size: 12px; }
+  select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+  .badge { padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .badge-live { background: #14532d; color: #4ade80; }
+  .badge-role { background: var(--surface2); color: var(--accent); border: 1px solid var(--border); }
+  main { max-width: 1400px; margin: 0 auto; padding: 24px 28px; }
+  .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 14px; margin-top: 32px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .kpi-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .kpi-value { font-size: 32px; font-weight: 700; line-height: 1; }
+  .kpi-sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .kpi-red .kpi-value { color: var(--red); }
+  .kpi-orange .kpi-value { color: var(--orange); }
+  .kpi-blue .kpi-value { color: var(--blue); }
+  .kpi-green .kpi-value { color: var(--green); }
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  .charts-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .card-title { font-size: 13px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+  .card-title .muted { color: var(--muted); font-weight: 400; font-size: 12px; }
+  canvas { max-height: 280px; }
+  /* risk table */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; padding: 0 10px 10px; font-weight: 500; }
+  td { padding: 9px 10px; border-top: 1px solid var(--border); }
+  tr:hover td { background: var(--surface2); }
+  .risk-pill { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .risk-critical { background: #450a0a; color: #fca5a5; }
+  .risk-high { background: #431407; color: #fdba74; }
+  .risk-medium { background: #422006; color: #fde68a; }
+  .risk-low { background: #052e16; color: #86efac; }
+  .bar-mini { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+  .bar-mini-fill { height: 100%; border-radius: 3px; }
+  /* network */
+  #network-svg { width: 100%; height: 300px; }
+  .node circle { stroke-width: 1.5px; cursor: pointer; }
+  .node text { font-size: 9px; fill: var(--muted); pointer-events: none; }
+  .link { stroke-opacity: 0.3; }
+  /* manager view */
+  .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .team-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .team-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .team-name { font-weight: 600; font-size: 13px; }
+  .score-bar { height: 8px; border-radius: 4px; background: var(--border); margin: 8px 0; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .rec-list { list-style: none; margin-top: 10px; }
+  .rec-list li { font-size: 12px; color: var(--muted); padding: 3px 0; border-top: 1px solid var(--border); display: flex; gap: 6px; align-items: flex-start; }
+  .rec-list li::before { content: "→"; color: var(--accent); flex-shrink: 0; }
+  /* pipeline panel */
+  .pipeline-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .btn { background: var(--accent); color: #fff; border: none; padding: 9px 18px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .status-line { margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .status-line .ok { color: var(--green); }
+  .status-line .running { color: var(--yellow); }
+  .status-line .err { color: var(--red); }
+  /* loading */
+  .loading { color: var(--muted); font-size: 13px; padding: 40px 0; text-align: center; }
+  .access-denied { color: var(--muted); font-size: 13px; padding: 20px; text-align: center; border: 1px dashed var(--border); border-radius: 10px; margin-top: 14px; }
+  #toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 18px; font-size: 13px; display: none; z-index: 200; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Cognitive<span>Sync</span> <span style="color:var(--muted);font-weight:400;font-size:14px">— Burnout Risk Platform</span></h1>
+  <div class="role-bar">
+    <span class="badge badge-live">● Live</span>
+    <label>Viewing as</label>
+    <select id="roleSelect" onchange="switchRole(this.value)">
+      <option value="hr_admin">HR Admin</option>
+      <option value="hr_analyst">HR Analyst</option>
+      <option value="manager">Team Manager</option>
+      <option value="it_admin">IT Admin</option>
+    </select>
+    <span class="badge badge-role" id="roleBadge">HR Admin</span>
+  </div>
+</header>
+
+<main id="mainContent">
+  <div class="loading">Loading dashboard…</div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+const API = '';
+let currentRole = 'hr_admin';
+let tokens = {};
+
+async function getToken(role) {
+  if (tokens[role]) return tokens[role];
+  const r = await fetch(`${API}/demo/token?role=${role}`);
+  const d = await r.json();
+  tokens[role] = d.token;
+  return d.token;
+}
+
+async function apiFetch(path, role) {
+  const token = await getToken(role);
+  const r = await fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!r.ok) throw new Error(`${r.status} ${path}`);
+  return r.json();
+}
+
+function scoreColor(s) {
+  if (s >= 0.75) return getComputedStyle(document.documentElement).getPropertyValue('--red').trim();
+  if (s >= 0.55) return getComputedStyle(document.documentElement).getPropertyValue('--orange').trim();
+  if (s >= 0.35) return getComputedStyle(document.documentElement).getPropertyValue('--yellow').trim();
+  return getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
+}
+
+function riskLabel(s) {
+  if (s >= 0.75) return ['Critical', 'risk-critical'];
+  if (s >= 0.55) return ['High', 'risk-high'];
+  if (s >= 0.35) return ['Medium', 'risk-medium'];
+  return ['Low', 'risk-low'];
+}
+
+function shortId(uuid) { return uuid.slice(0, 8); }
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 2500);
+}
+
+// ─── HR Admin / HR Analyst view ───────────────────────────────────────────────
+async function renderHRView(role) {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = '<div class="loading">Fetching data…</div>';
+
+  const [scores, teamSummary, cascade, recs] = await Promise.all([
+    apiFetch('/api/v1/scores', role),
+    apiFetch('/api/v1/scores/team-summary', role),
+    apiFetch('/api/v1/cascade-map', role),
+    apiFetch('/api/v1/recommendations', role),
+  ]);
+
+  const total = scores.length;
+  const critical = scores.filter(s => s.burnout_score >= 0.75).length;
+  const highRisk = scores.filter(s => s.burnout_score >= 0.55).length;
+  const cascadeAffected = cascade.nodes.filter(n => n.cascade_risk > 0.05).length;
+  const avgScore = total ? (scores.reduce((a, s) => a + s.burnout_score, 0) / total) : 0;
+  const sorted = [...scores].sort((a, b) => b.burnout_score - a.burnout_score);
+
+  // Feature frequency across org
+  const featFreq = {};
+  scores.forEach(s => {
+    Object.entries(s.top_features || {}).forEach(([k, v]) => {
+      featFreq[k] = (featFreq[k] || 0) + v;
+    });
+  });
+  const topFeats = Object.entries(featFreq).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  // Distribution buckets
+  const buckets = [0,0,0,0]; // 0-25, 25-50, 50-75, 75-100
+  scores.forEach(s => {
+    const v = s.burnout_score;
+    if (v < 0.25) buckets[0]++;
+    else if (v < 0.50) buckets[1]++;
+    else if (v < 0.75) buckets[2]++;
+    else buckets[3]++;
+  });
+
+  main.innerHTML = `
+    <p class="section-title">Overview — ${new Date().toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'})}</p>
+    <div class="kpi-row">
+      <div class="kpi kpi-blue"><div class="kpi-label">Employees Monitored</div><div class="kpi-value">${total}</div><div class="kpi-sub">Pseudonymised — no PII stored</div></div>
+      <div class="kpi kpi-red"><div class="kpi-label">Critical Risk (≥ 75%)</div><div class="kpi-value">${critical}</div><div class="kpi-sub">${((critical/total)*100).toFixed(0)}% of workforce</div></div>
+      <div class="kpi kpi-orange"><div class="kpi-label">Elevated Risk (≥ 55%)</div><div class="kpi-value">${highRisk}</div><div class="kpi-sub">Requires monitoring</div></div>
+      <div class="kpi kpi-green"><div class="kpi-label">Cascade Exposure</div><div class="kpi-value">${cascadeAffected}</div><div class="kpi-sub">Neighbours of high-risk nodes</div></div>
+    </div>
+
+    <p class="section-title">Risk Distribution & Signal Analysis</p>
+    <div class="charts-row">
+      <div class="card">
+        <div class="card-title">Burnout Score Distribution</div>
+        <canvas id="distChart"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">Top Contributing Signals <span class="muted">— across org</span></div>
+        <canvas id="featChart"></canvas>
+      </div>
+    </div>
+
+    <p class="section-title">Individual Risk Table <span style="color:var(--muted);font-weight:400;font-size:11px;margin-left:6px">— pseudonymised IDs only</span></p>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table>
+        <thead><tr>
+          <th>Employee ID</th><th>Burnout Score</th><th>Confidence</th>
+          <th>Cascade Risk</th><th>Top Signal</th><th>Risk Level</th>
+        </tr></thead>
+        <tbody id="riskTable"></tbody>
+      </table>
+    </div>
+
+    <p class="section-title">Cascade Network <span class="muted">— risk propagation across org graph</span></p>
+    <div class="card">
+      <div class="card-title">Collaboration Graph — node colour = burnout risk, edges = interaction weight</div>
+      <svg id="network-svg"></svg>
+    </div>
+
+    <p class="section-title">Confidence Intervals — Top 15 at-risk employees</p>
+    <div class="card">
+      <div class="card-title">Burnout Score with MC Dropout 95% CI</div>
+      <canvas id="ciChart"></canvas>
+    </div>
+  `;
+
+  // Dist chart
+  new Chart(document.getElementById('distChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Safe (0–25%)', 'Low (25–50%)', 'Elevated (50–75%)', 'Critical (75–100%)'],
+      datasets: [{
+        data: buckets,
+        backgroundColor: ['#14532d','#365314','#78350f','#450a0a'],
+        borderColor: ['#22c55e','#84cc16','#f97316','#ef4444'],
+        borderWidth: 1, borderRadius: 5,
+      }]
+    },
+    options: { plugins: { legend: { display: false } }, scales: {
+      x: { ticks: { color: '#8b91a8' }, grid: { color: '#2e3347' } },
+      y: { ticks: { color: '#8b91a8' }, grid: { color: '#2e3347' } },
+    }}
+  });
+
+  // Feature chart
+  new Chart(document.getElementById('featChart'), {
+    type: 'bar',
+    data: {
+      labels: topFeats.map(([k]) => k.replace(/_/g,' ')),
+      datasets: [{
+        data: topFeats.map(([,v]) => v.toFixed(2)),
+        backgroundColor: '#4f46e533',
+        borderColor: '#6366f1',
+        borderWidth: 1, borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8b91a8' }, grid: { color: '#2e3347' } },
+        y: { ticks: { color: '#8b91a8' }, grid: { color: '#2e3347' } },
+      }
+    }
+  });
+
+  // Risk table
+  const tbody = document.getElementById('riskTable');
+  sorted.slice(0, 30).forEach(s => {
+    const [label, cls] = riskLabel(s.burnout_score);
+    const topFeat = Object.keys(s.top_features || {})[0] || '—';
+    const ci = ((s.confidence_high - s.confidence_low) * 100).toFixed(0);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-family:monospace;color:var(--muted)">${shortId(s.pseudo_id)}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-weight:700;color:${scoreColor(s.burnout_score)}">${(s.burnout_score*100).toFixed(1)}%</span>
+          <div class="bar-mini" style="width:80px"><div class="bar-mini-fill" style="width:${s.burnout_score*100}%;background:${scoreColor(s.burnout_score)}"></div></div>
+        </div>
+      </td>
+      <td style="color:var(--muted)">±${ci}%</td>
+      <td style="color:${s.cascade_risk > 0.1 ? 'var(--orange)' : 'var(--muted)'}">${(s.cascade_risk*100).toFixed(1)}%</td>
+      <td style="color:var(--muted)">${topFeat.replace(/_/g,' ')}</td>
+      <td><span class="risk-pill ${cls}">${label}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // CI chart — top 15
+  const top15 = sorted.slice(0, 15);
+  new Chart(document.getElementById('ciChart'), {
+    type: 'bar',
+    data: {
+      labels: top15.map(s => shortId(s.pseudo_id)),
+      datasets: [
+        {
+          label: 'Burnout Score',
+          data: top15.map(s => (s.burnout_score * 100).toFixed(1)),
+          backgroundColor: top15.map(s => scoreColor(s.burnout_score) + '99'),
+          borderColor: top15.map(s => scoreColor(s.burnout_score)),
+          borderWidth: 1, borderRadius: 3,
+        },
+        {
+          label: 'CI High',
+          data: top15.map(s => (s.confidence_high * 100).toFixed(1)),
+          type: 'line', borderColor: '#6366f155', borderWidth: 1,
+          pointRadius: 0, fill: false, tension: 0.3,
+        },
+        {
+          label: 'CI Low',
+          data: top15.map(s => (s.confidence_low * 100).toFixed(1)),
+          type: 'line', borderColor: '#6366f155', borderWidth: 1,
+          pointRadius: 0, fill: '-1', backgroundColor: '#6366f111', tension: 0.3,
+        },
+      ]
+    },
+    options: {
+      plugins: { legend: { labels: { color: '#8b91a8', boxWidth: 12 } } },
+      scales: {
+        x: { ticks: { color: '#8b91a8', font: { family: 'monospace', size: 11 } }, grid: { color: '#2e3347' } },
+        y: { ticks: { color: '#8b91a8', callback: v => v + '%' }, grid: { color: '#2e3347' }, min: 0, max: 100 },
+      }
+    }
+  });
+
+  // D3 network
+  renderNetwork(cascade);
+}
+
+function renderNetwork(cascade) {
+  const svg = d3.select('#network-svg');
+  const W = document.getElementById('network-svg').clientWidth || 800;
+  const H = 300;
+  svg.attr('viewBox', `0 0 ${W} ${H}`);
+
+  const nodeMap = {};
+  cascade.nodes.forEach(n => { nodeMap[n.pseudo_id] = n; });
+
+  const highRiskSet = new Set(cascade.high_risk_sources.map(String));
+
+  const nodes = cascade.nodes.map(n => ({
+    id: n.pseudo_id, score: n.burnout_score, cascade: n.cascade_risk,
+    isSource: highRiskSet.has(String(n.pseudo_id))
+  }));
+
+  const links = cascade.edges
+    .filter(e => e.is_cascade_path)
+    .slice(0, 200)
+    .map(e => ({ source: String(e.source), target: String(e.target), w: e.weight }));
+
+  const sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d => d.id).distance(40).strength(0.3))
+    .force('charge', d3.forceManyBody().strength(-30))
+    .force('center', d3.forceCenter(W / 2, H / 2))
+    .force('collision', d3.forceCollide(8));
+
+  const link = svg.append('g').selectAll('line').data(links).join('line')
+    .attr('class', 'link')
+    .attr('stroke', '#6366f1')
+    .attr('stroke-width', d => Math.max(0.5, d.w * 2));
+
+  const node = svg.append('g').selectAll('g').data(nodes).join('g').attr('class', 'node');
+
+  node.append('circle')
+    .attr('r', d => d.isSource ? 7 : 4)
+    .attr('fill', d => {
+      if (d.score >= 0.75) return '#ef4444';
+      if (d.score >= 0.55) return '#f97316';
+      if (d.score >= 0.35) return '#eab308';
+      return '#22c55e';
+    })
+    .attr('stroke', d => d.isSource ? '#fff' : 'transparent')
+    .append('title').text(d => `${shortId(d.id)}\nScore: ${(d.score*100).toFixed(1)}%\nCascade: ${(d.cascade*100).toFixed(1)}%`);
+
+  sim.on('tick', () => {
+    link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+    node.attr('transform', d => `translate(${Math.max(8,Math.min(W-8,d.x))},${Math.max(8,Math.min(H-8,d.y))})`);
+  });
+
+  // Legend
+  svg.append('g').attr('transform', `translate(12, ${H-60})`).call(g => {
+    [['Critical ≥75%','#ef4444'],['High ≥55%','#f97316'],['Medium ≥35%','#eab308'],['Safe','#22c55e']].forEach(([l,c],i) => {
+      g.append('circle').attr('cx', 6).attr('cy', i*14).attr('r', 4).attr('fill', c);
+      g.append('text').attr('x', 14).attr('y', i*14+4).attr('fill', '#8b91a8').attr('font-size', 10).text(l);
+    });
+  });
+}
+
+// ─── Manager view ─────────────────────────────────────────────────────────────
+async function renderManagerView() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = '<div class="loading">Fetching team data…</div>';
+
+  const [summary, recs] = await Promise.all([
+    apiFetch('/api/v1/scores/team-summary', 'manager'),
+    apiFetch('/api/v1/recommendations', 'manager'),
+  ]);
+
+  const recByTeam = {};
+  recs.forEach(r => { recByTeam[r.team_id] = r; });
+
+  main.innerHTML = `
+    <p class="section-title">Team Risk Overview <span style="color:var(--muted);font-weight:400;font-size:11px;margin-left:6px">— individual scores are not visible at this access level</span></p>
+    <div class="access-denied" style="margin-bottom:16px">
+      🔒 Individual employee data is redacted. You see team-level aggregates only.
+    </div>
+    <div class="team-grid" id="teamGrid"></div>
+    <p class="section-title">Team Score Comparison</p>
+    <div class="card"><div class="card-title">Average Burnout Score by Team</div><canvas id="teamChart" style="max-height:220px"></canvas></div>
+  `;
+
+  const grid = document.getElementById('teamGrid');
+  summary.forEach(t => {
+    const rec = recByTeam[t.team_id] || {};
+    const [label, cls] = riskLabel(t.avg_burnout_score);
+    const card = document.createElement('div');
+    card.className = 'team-card';
+    card.innerHTML = `
+      <div class="team-card-header">
+        <div class="team-name">Team ${shortId(t.team_id)}</div>
+        <span class="risk-pill ${cls}">${label}</span>
+      </div>
+      <div style="color:var(--muted);font-size:12px">${t.team_size} members · ${t.high_risk_member_count} at high risk</div>
+      <div class="score-bar"><div class="score-bar-fill" style="width:${t.avg_burnout_score*100}%;background:${scoreColor(t.avg_burnout_score)}"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px">
+        <span style="font-weight:700;color:${scoreColor(t.avg_burnout_score)}">${(t.avg_burnout_score*100).toFixed(1)}% avg</span>
+        <span style="color:var(--muted)">Max: ${(t.max_burnout_score*100).toFixed(1)}%</span>
+      </div>
+      ${rec.recommendations ? `<ul class="rec-list">${rec.recommendations.map(r=>`<li>${r}</li>`).join('')}${rec.meeting_reduction_suggestion?`<li>${rec.meeting_reduction_suggestion}</li>`:''}${rec.focus_time_suggestion?`<li>${rec.focus_time_suggestion}</li>`:''}</ul>` : ''}
+    `;
+    grid.appendChild(card);
+  });
+
+  new Chart(document.getElementById('teamChart'), {
+    type: 'bar',
+    data: {
+      labels: summary.map(t => 'Team ' + shortId(t.team_id)),
+      datasets: [{
+        label: 'Avg Burnout Score',
+        data: summary.map(t => (t.avg_burnout_score*100).toFixed(1)),
+        backgroundColor: summary.map(t => scoreColor(t.avg_burnout_score) + '66'),
+        borderColor: summary.map(t => scoreColor(t.avg_burnout_score)),
+        borderWidth: 1, borderRadius: 4,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8b91a8' }, grid: { color: '#2e3347' } },
+        y: { ticks: { color: '#8b91a8', callback: v => v + '%' }, grid: { color: '#2e3347' }, min: 0, max: 100 },
+      }
+    }
+  });
+}
+
+// ─── IT Admin view ────────────────────────────────────────────────────────────
+async function renderITView() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `
+    <p class="section-title">Pipeline Control</p>
+    <div class="pipeline-panel">
+      <div class="card-title">Scoring Pipeline — CSV → Graph → GNN → Cascade → DB</div>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:16px;line-height:1.6">
+        Triggers a full scoring run using synthetic data. Processes 120 employees through the GAT model,
+        computes MC Dropout confidence intervals, propagates cascade risk, and persists scores to PostgreSQL.
+      </p>
+      <button class="btn" id="runBtn" onclick="triggerPipeline()">▶ Trigger Pipeline Run</button>
+      <div class="status-line" id="pipelineStatus">Ready.</div>
+    </div>
+    <p class="section-title">System Info</p>
+    <div class="card">
+      <table>
+        <tbody>
+          <tr><td style="color:var(--muted);width:200px">Model</td><td>SmallBurnoutGAT (10→64→16→1, dropout=0.1)</td></tr>
+          <tr><td style="color:var(--muted)">Checkpoint</td><td>models/latest → final-v1 (seed=99, fold=3)</td></tr>
+          <tr><td style="color:var(--muted)">Best AUC</td><td style="color:var(--green)">0.857</td></tr>
+          <tr><td style="color:var(--muted)">Phase Gate</td><td style="color:var(--green)">PASSED (acc=0.80, AUC=0.80)</td></tr>
+          <tr><td style="color:var(--muted)">Adapter Mode</td><td style="color:var(--yellow)">mock (synthetic data)</td></tr>
+          <tr><td style="color:var(--muted)">Privacy</td><td>UUID v5 pseudonymisation — no PII at rest</td></tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function triggerPipeline() {
+  const btn = document.getElementById('runBtn');
+  const statusEl = document.getElementById('pipelineStatus');
+  btn.disabled = true;
+  statusEl.innerHTML = '<span class="running">⏳ Starting pipeline…</span>';
+
+  try {
+    const token = await getToken('it_admin');
+    const r = await fetch(`${API}/api/v1/pipeline/run`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    const run = await r.json();
+    statusEl.innerHTML = `<span class="running">⏳ Running… (run_id: ${shortId(run.run_id)})</span>`;
+
+    const poll = async () => {
+      const s = await apiFetch(`/api/v1/pipeline/status/${run.run_id}`, 'it_admin');
+      if (s.status === 'completed') {
+        statusEl.innerHTML = `<span class="ok">✓ Completed — ${s.node_count} nodes scored, ${s.high_risk_count} high-risk</span>`;
+        btn.disabled = false;
+        toast('Pipeline complete — refresh other views to see updated scores.');
+      } else if (s.status === 'failed') {
+        statusEl.innerHTML = `<span class="err">✗ Failed: ${s.message}</span>`;
+        btn.disabled = false;
+      } else {
+        setTimeout(poll, 2000);
+      }
+    };
+    setTimeout(poll, 2000);
+  } catch(e) {
+    statusEl.innerHTML = `<span class="err">✗ ${e.message}</span>`;
+    btn.disabled = false;
+  }
+}
+
+async function switchRole(role) {
+  currentRole = role;
+  const labels = { hr_admin: 'HR Admin', hr_analyst: 'HR Analyst', manager: 'Team Manager', it_admin: 'IT Admin' };
+  document.getElementById('roleBadge').textContent = labels[role];
+
+  try {
+    if (role === 'manager') await renderManagerView();
+    else if (role === 'it_admin') await renderITView();
+    else await renderHRView(role);
+  } catch(e) {
+    document.getElementById('mainContent').innerHTML = `<div class="access-denied">Error loading view: ${e.message}</div>`;
+  }
+}
+
+// Boot
+switchRole('hr_admin');
+</script>
+</body>
+</html>

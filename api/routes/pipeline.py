@@ -90,10 +90,11 @@ async def _run_pipeline(run_id: UUID) -> None:
         window_end = datetime.now(UTC)
         high_risk_count = sum(1 for ns in scored.node_scores.values() if ns.burnout_score >= 0.70)
 
-        # Step 4: Persist scores + update profiles (always use a fresh session)
+        # Step 4: Persist scores, edge signals, and profiles (always use a fresh session)
         from intelligence.profile_updater import update_profiles
         async with AsyncSessionLocal() as fresh_db:
             await _persist_scores(run_id, window_end, scored, cascade_results, fresh_db)
+            await _persist_edges(window_end, built, fresh_db)
             await update_profiles(run_id, scored.node_scores, cascade_results, fresh_db)
             await fresh_db.commit()
 
@@ -115,6 +116,29 @@ async def _run_pipeline(run_id: UUID) -> None:
             "completed_at": datetime.now(UTC),
             "message": str(exc),
         })
+
+
+async def _persist_edges(
+    window_end: datetime,
+    built: object,
+    db: AsyncSession,
+) -> None:
+    from ingestion.db.models import EdgeSignal
+    from intelligence.graph_builder import BuiltGraph
+    import networkx as nx
+    bg: BuiltGraph = built  # type: ignore[assignment]
+    G: nx.DiGraph = bg.nx_graph  # type: ignore[assignment]
+    node_index = {nid: i for i, nid in enumerate(bg.node_ids)}
+    window_start = window_end  # same window for demo
+    for src, dst, attrs in G.edges(data=True):
+        db.add(EdgeSignal(
+            id=uuid4(),
+            source_pseudo_id=src,
+            target_pseudo_id=dst,
+            weight=float(attrs.get("weight", 1.0)),
+            window_start=window_start,
+            window_end=window_end,
+        ))
 
 
 async def _persist_scores(

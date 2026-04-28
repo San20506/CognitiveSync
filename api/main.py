@@ -13,6 +13,7 @@ from api.routes import (
     audit,
     cascade,
     config,
+    demo,
     employees,
     model,
     pipeline,
@@ -48,7 +49,7 @@ app = FastAPI(
 # Internal-only CORS — no external origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Power BI dev only
+    allow_origins=["http://localhost:3000", "http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT"],
     allow_headers=["Authorization", "Content-Type"],
@@ -69,3 +70,4 @@ app.include_router(recommendations.router, prefix="/api/v1", tags=["recommendati
 app.include_router(config.router, prefix="/api/v1", tags=["config"])
 app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
 app.include_router(model.router, prefix="/api/v1", tags=["model"])
+app.include_router(demo.router, tags=["demo"])
