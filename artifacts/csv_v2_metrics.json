@@ -1,0 +1,58 @@
+{
+  "version": "csv-v2-tuned",
+  "saved_at": "2026-04-20T14:39:03.717827",
+  "feature_cols": [
+    "meeting_density",
+    "after_hours_ratio",
+    "response_latency_avg",
+    "focus_time_blocks",
+    "msg_volume_daily",
+    "msg_response_time",
+    "mention_load",
+    "context_switch_rate",
+    "hrv_avg",
+    "sleep_score"
+  ],
+  "cv_folds": 5,
+  "mean_accuracy": 0.625,
+  "mean_f1": 0.5191643202532494,
+  "mean_auc": 0.6891223155929038,
+  "best_fold_auc": 0.8403361344537814,
+  "fold_results": [
+    {
+      "acc": 0.7083333333333334,
+      "f1": 0.36363636363636365,
+      "auc": 0.6388888888888888,
+      "best_ep": 35,
+      "val_loss": 0.8774580955505371
+    },
+    {
+      "acc": 0.625,
+      "f1": 0.5714285714285714,
+      "auc": 0.7142857142857143,
+      "best_ep": 42,
+      "val_loss": 0.9074658751487732
+    },
+    {
+      "acc": 0.7916666666666666,
+      "f1": 0.6153846153846154,
+      "auc": 0.8403361344537814,
+      "best_ep": 65,
+      "val_loss": 0.8060657382011414
+    },
+    {
+      "acc": 0.7083333333333334,
+      "f1": 0.631578947368421,
+      "auc": 0.7983193277310924,
+      "best_ep": 0,
+      "val_loss": 1.0046098232269287
+    },
+    {
+      "acc": 0.2916666666666667,
+      "f1": 0.41379310344827586,
+      "auc": 0.45378151260504196,
+      "best_ep": 5,
+      "val_loss": 1.0098767280578613
+    }
+  ]
+}

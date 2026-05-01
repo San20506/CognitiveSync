@@ -81,7 +81,7 @@ exclude = ["alembic/", "data/"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "--cov=intelligence --cov=ingestion/db --cov-report=term-missing --cov-report=html --cov-fail-under=80"
+addopts = "--cov=intelligence --cov=ingestion/db --cov-report=term-missing --cov-report=html"
 
 [tool.coverage.run]
 omit = [

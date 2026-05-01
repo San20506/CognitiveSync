@@ -1,0 +1,15 @@
+{
+  "val_accuracy": 0.8,
+  "val_f1": 0.3333333333333333,
+  "auc_roc": 0.803921568627451,
+  "best_epoch": 0,
+  "train_loss_final": 1.1795766353607178,
+  "val_loss_final": 1.1791410446166992,
+  "phase_gate": {
+    "accuracy_threshold": 0.8,
+    "auc_threshold": 0.75,
+    "accuracy_pass": true,
+    "auc_pass": true,
+    "overall_pass": true
+  }
+}
