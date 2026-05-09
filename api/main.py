@@ -8,7 +8,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
+from api.limiter import limiter
 from api.routes import (
     audit,
     cascade,
@@ -21,6 +24,7 @@ from api.routes import (
     recommendations,
     scores,
 )
+from config.settings import settings
 from ingestion.scheduler import configure_scheduler, scheduler
 
 logger = logging.getLogger(__name__)
@@ -46,6 +50,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Internal-only CORS — no external origins
 app.add_middleware(
     CORSMiddleware,
@@ -70,4 +77,6 @@ app.include_router(recommendations.router, prefix="/api/v1", tags=["recommendati
 app.include_router(config.router, prefix="/api/v1", tags=["config"])
 app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
 app.include_router(model.router, prefix="/api/v1", tags=["model"])
-app.include_router(demo.router, tags=["demo"])
+
+if settings.demo_enabled:
+    app.include_router(demo.router, tags=["demo"])

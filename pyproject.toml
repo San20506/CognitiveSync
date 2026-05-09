@@ -41,6 +41,7 @@ dependencies = [
     "pandas>=3.0.2",
     "matplotlib>=3.10.9",
     "seaborn>=0.13.2",
+    "slowapi>=0.1.9",
 ]
 
 [project.optional-dependencies]
@@ -81,12 +82,13 @@ exclude = ["alembic/", "data/"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "--cov=intelligence --cov=ingestion/db --cov-report=term-missing --cov-report=html"
+addopts = "--cov=intelligence --cov=api --cov=ingestion --cov-report=term-missing --cov-report=html"
 
 [tool.coverage.run]
 omit = [
     "tests/*",
     "data/*",
+    "ingestion/adapters/*",
     "alembic/*",
     "deploy/*",
     "scripts/*",

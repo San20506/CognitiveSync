@@ -3,6 +3,13 @@
 .codex
 CLAUDE.md
 
+# Secrets & environment files
+.env
+.env.*
+secrets/
+*.pem
+*.key
+
 CognitiveSync_PID.docx
 CognitiveSync_ARCHITECTURE.docx
 CognitiveSync_TECH_STACK.docx
