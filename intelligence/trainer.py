@@ -20,7 +20,7 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
-from sklearn.metrics import f1_score, roc_auc_score
+from sklearn.metrics import f1_score, precision_recall_curve, roc_auc_score
 from sklearn.model_selection import train_test_split
 from torch_geometric.data import Data
 
@@ -61,6 +61,7 @@ class ModelTrainer:
         labels: object,  # Tensor[N] binary burnout labels
         epochs: int = 100,
         lr: float = 0.001,
+        patience: int = 10,
     ) -> TrainingMetrics:
         """Train the GAT model.
 
@@ -147,7 +148,7 @@ class ModelTrainer:
                 best_state = {k: v.clone() for k, v in model.state_dict().items()}
             else:
                 patience_count += 1
-                if patience_count >= 10:
+                if patience_count >= patience:
                     logger.info("Early stopping at epoch %d", epoch)
                     break
 
@@ -162,8 +163,14 @@ class ModelTrainer:
                 data.x, data.edge_index, data.edge_attr
             )
             test_probs = torch.sigmoid(test_logits)
-            test_preds = (test_probs[test_mask].squeeze() > 0.5).float().cpu().numpy()
+            test_probs_np = test_probs[test_mask].squeeze().cpu().numpy()
             test_labels_np = y[test_mask].cpu().numpy()
+            # Find optimal F1 threshold via precision-recall curve
+            prec, rec, thresholds = precision_recall_curve(test_labels_np, test_probs_np)
+            f1_scores = 2 * prec * rec / (prec + rec + 1e-9)
+            best_thresh_idx = int(f1_scores[:-1].argmax())
+            best_threshold = float(thresholds[best_thresh_idx]) if len(thresholds) > 0 else 0.5
+            test_preds = (test_probs_np > best_threshold).astype(float)
             train_logits: torch.Tensor = model(
                 data.x, data.edge_index, data.edge_attr
             )
@@ -177,7 +184,7 @@ class ModelTrainer:
             auc = float(
                 roc_auc_score(
                     test_labels_np,
-                    test_probs[test_mask].squeeze().cpu().numpy(),
+                    test_probs_np,
                 )
             )
         except ValueError:

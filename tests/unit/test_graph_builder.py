@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 import torch
 
+from config.features import MODEL_FEATURE_NAMES
 from intelligence.graph_builder import GraphBuilder, FEATURE_NAMES
 
 
@@ -65,7 +66,7 @@ class TestToPyG:
     def test_x_shape(self, tmp_path: pytest.TempPathFactory) -> None:  # type: ignore[type-arg]
         fp, ip = _write_csvs(tmp_path, 12)
         result = GraphBuilder().build_from_csv(fp, ip)
-        assert result.pyg_data.x.shape == (12, len(FEATURE_NAMES))
+        assert result.pyg_data.x.shape == (12, len(MODEL_FEATURE_NAMES))
 
     def test_x_dtype_float32(self, tmp_path: pytest.TempPathFactory) -> None:  # type: ignore[type-arg]
         fp, ip = _write_csvs(tmp_path, 8)

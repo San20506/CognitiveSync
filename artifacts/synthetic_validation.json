@@ -1,0 +1,136 @@
+{
+  "node_count": {
+    "expected": 200,
+    "actual": 200,
+    "pass": true
+  },
+  "label_balance": {
+    "expected_rate": 0.15,
+    "actual_rate": 0.15,
+    "tolerance": 0.05,
+    "n_burnout": 30,
+    "n_normal": 170,
+    "pass": true
+  },
+  "feature_distributions": [
+    {
+      "feature": "meeting_density",
+      "burnout_mean": 0.7983,
+      "normal_mean": 0.3077,
+      "global_min": 0.0435,
+      "global_max": 1.0
+    },
+    {
+      "feature": "after_hours_meetings",
+      "burnout_mean": 0.7575,
+      "normal_mean": 0.301,
+      "global_min": 0.0044,
+      "global_max": 0.9141
+    },
+    {
+      "feature": "focus_blocks",
+      "burnout_mean": 0.2076,
+      "normal_mean": 0.2836,
+      "global_min": 0.0,
+      "global_max": 0.5813
+    },
+    {
+      "feature": "email_response_latency",
+      "burnout_mean": 0.7901,
+      "normal_mean": 0.3097,
+      "global_min": 0.1063,
+      "global_max": 0.9951
+    },
+    {
+      "feature": "meeting_accept_rate",
+      "burnout_mean": 0.2245,
+      "normal_mean": 0.2998,
+      "global_min": 0.0035,
+      "global_max": 0.5704
+    },
+    {
+      "feature": "message_volume",
+      "burnout_mean": 0.8089,
+      "normal_mean": 0.2996,
+      "global_min": 0.0623,
+      "global_max": 1.0
+    },
+    {
+      "feature": "after_hours_messages",
+      "burnout_mean": 0.792,
+      "normal_mean": 0.2981,
+      "global_min": 0.0398,
+      "global_max": 0.9501
+    },
+    {
+      "feature": "response_time_slack",
+      "burnout_mean": 0.2825,
+      "normal_mean": 0.2978,
+      "global_min": 0.0,
+      "global_max": 0.5445
+    },
+    {
+      "feature": "mention_frequency",
+      "burnout_mean": 0.7858,
+      "normal_mean": 0.2894,
+      "global_min": 0.0564,
+      "global_max": 1.0
+    },
+    {
+      "feature": "commit_frequency",
+      "burnout_mean": 0.2984,
+      "normal_mean": 0.3039,
+      "global_min": 0.0083,
+      "global_max": 0.5268
+    },
+    {
+      "feature": "after_hours_commits",
+      "burnout_mean": 0.7862,
+      "normal_mean": 0.2909,
+      "global_min": 0.0133,
+      "global_max": 1.0
+    },
+    {
+      "feature": "pr_review_load",
+      "burnout_mean": 0.8112,
+      "normal_mean": 0.3094,
+      "global_min": 0.0,
+      "global_max": 0.9972
+    },
+    {
+      "feature": "context_switch_rate",
+      "burnout_mean": 0.7806,
+      "normal_mean": 0.2947,
+      "global_min": 0.0587,
+      "global_max": 1.0
+    }
+  ],
+  "edge_density": {
+    "within_team": {
+      "expected": 0.4,
+      "actual": 0.3944,
+      "pass": true
+    },
+    "cross_team": {
+      "expected": 0.05,
+      "actual": 0.0498,
+      "pass": true
+    },
+    "total_edges": 3034
+  },
+  "pseudonymity": {
+    "all_uuid_format": true,
+    "no_collisions": true,
+    "pass": true
+  },
+  "raw_signals_coverage": {
+    "all_employees_covered": true,
+    "pass": true
+  },
+  "overall": {
+    "pass": true,
+    "failures": [],
+    "n_employees": 200,
+    "seed": 42
+  }
+}

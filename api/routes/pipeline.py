@@ -3,19 +3,20 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.limiter import limiter
 from api.middleware.auth import TokenPayload
 from api.middleware.rbac import require_role
 from api.schemas.common import PipelineStatus, UserRole
-from ingestion.db.session import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -65,24 +66,38 @@ async def _run_pipeline(run_id: UUID) -> None:
         if not Path(interactions_path).exists():
             raise FileNotFoundError(f"interactions.csv not found at {interactions_path}")
 
-        # Step 1: Build graph from CSVs
+        loop = asyncio.get_event_loop()
+
+        # Step 1: Build graph from CSVs (blocking: CSV reads + networkx construction)
         builder = GraphBuilder()
-        built = builder.build_from_csv(features_path, interactions_path)
+        built = await loop.run_in_executor(
+            None,
+            functools.partial(builder.build_from_csv, features_path, interactions_path),
+        )
         logger.info("Graph built: %d nodes", len(built.node_ids))
 
-        # Step 2: Load model and run inference
+        # Step 2: Load model (blocking: file I/O + torch.load)
         pipeline = InferencePipeline(
             model_registry_path=MODEL_REGISTRY,
             device="cuda",
         )
-        pipeline.load_model(version="latest")
-        scored = pipeline.score(
-            pyg_data=built.pyg_data,
-            node_ids=built.node_ids,
-            run_id=run_id,
+        await loop.run_in_executor(
+            None,
+            functools.partial(pipeline.load_model, version="latest"),
         )
 
-        # Step 3: Cascade propagation
+        # Step 3: Score (blocking: PyTorch forward passes)
+        scored = await loop.run_in_executor(
+            None,
+            functools.partial(
+                pipeline.score,
+                pyg_data=built.pyg_data,
+                node_ids=built.node_ids,
+                run_id=run_id,
+            ),
+        )
+
+        # Step 4: Cascade propagation
         propagator = CascadePropagator()
         burnout_scores = {pid: ns.burnout_score for pid, ns in scored.node_scores.items()}
         cascade_results = propagator.propagate(built.nx_graph, burnout_scores)
@@ -90,7 +105,7 @@ async def _run_pipeline(run_id: UUID) -> None:
         window_end = datetime.now(UTC)
         high_risk_count = sum(1 for ns in scored.node_scores.values() if ns.burnout_score >= 0.70)
 
-        # Step 4: Persist scores, edge signals, and profiles (always use a fresh session)
+        # Step 5: Persist scores, edge signals, and profiles (always use a fresh session)
         from intelligence.profile_updater import update_profiles
         async with AsyncSessionLocal() as fresh_db:
             await _persist_scores(run_id, window_end, scored, cascade_results, fresh_db)
@@ -123,9 +138,10 @@ async def _persist_edges(
     built: object,
     db: AsyncSession,
 ) -> None:
+    import networkx as nx
+
     from ingestion.db.models import EdgeSignal
     from intelligence.graph_builder import BuiltGraph
-    import networkx as nx
     bg: BuiltGraph = built  # type: ignore[assignment]
     G: nx.DiGraph = bg.nx_graph  # type: ignore[assignment]
     node_index = {nid: i for i, nid in enumerate(bg.node_ids)}
@@ -181,7 +197,9 @@ async def _persist_scores(
     response_model=PipelineRunResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
+@limiter.limit("5/minute")
 async def trigger_pipeline_run(
+    request: Request,
     token: TokenPayload = require_role(UserRole.IT_ADMIN),
 ) -> PipelineRunResponse:
     """Trigger a full scoring pipeline run.

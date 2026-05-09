@@ -1,0 +1,68 @@
+{
+  "run_id": "20db24de-0b79-4a05-90ad-2c3d64c92cc1",
+  "node_count": 120,
+  "high_risk_count": 23,
+  "cascade_affected_count": 69,
+  "top_nodes": [
+    {
+      "pseudo_id": "4c011558-52d8-4bba-bb44-6e2f5a26aaa8",
+      "burnout_score": 0.8802316784858704,
+      "confidence_low": 0.7703751921653748,
+      "confidence_high": 0.990088164806366,
+      "cascade_risk": 0.05278034998045128,
+      "top_features": {
+        "meeting_density": 0.9591373205184937,
+        "response_latency_avg": 0.8965517282485962,
+        "mention_load": 0.795918345451355
+      }
+    },
+    {
+      "pseudo_id": "07659d75-91be-4f74-a0bd-62e9b0fa2211",
+      "burnout_score": 0.843725323677063,
+      "confidence_low": 0.4738861620426178,
+      "confidence_high": 1.0,
+      "cascade_risk": 0.0,
+      "top_features": {
+        "response_latency_avg": 0.9936143159866333,
+        "meeting_density": 0.9534619450569153,
+        "msg_volume_daily": 0.9426336288452148
+      }
+    },
+    {
+      "pseudo_id": "d07951d8-d260-4027-9eed-ecbf28a44ec0",
+      "burnout_score": 0.8246424794197083,
+      "confidence_low": 0.7505453824996948,
+      "confidence_high": 0.8987395763397217,
+      "cascade_risk": 0.0,
+      "top_features": {
+        "focus_time_blocks": 0.7622377276420593,
+        "after_hours_ratio": 0.7072368264198303,
+        "msg_response_time": 0.49363866448402405
+      }
+    },
+    {
+      "pseudo_id": "0d079c6e-f657-403a-82ee-cf0c9b4d1ccf",
+      "burnout_score": 0.7933198809623718,
+      "confidence_low": 0.6791825890541077,
+      "confidence_high": 0.907457172870636,
+      "cascade_risk": 0.1345698540502129,
+      "top_features": {
+        "meeting_density": 0.8740068078041077,
+        "response_latency_avg": 0.5798211693763733,
+        "msg_response_time": 0.534351110458374
+      }
+    },
+    {
+      "pseudo_id": "a3a5893d-7468-4dc5-be56-1ed668a269c9",
+      "burnout_score": 0.7768191695213318,
+      "confidence_low": 0.580159604549408,
+      "confidence_high": 0.9734787344932556,
+      "cascade_risk": 0.15578382588664935,
+      "top_features": {
+        "focus_time_blocks": 0.8496503233909607,
+        "after_hours_ratio": 0.6743420958518982,
+        "msg_response_time": 0.5
+      }
+    }
+  ]
+}
