@@ -2,6 +2,9 @@
 .gstack/
 .codex
 CLAUDE.md
+.obsidian/
+.sisyphus/
+CognitiveSync-pitch.html
 
 # Secrets & environment files
 .env
