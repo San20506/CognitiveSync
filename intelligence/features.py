@@ -9,25 +9,23 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-# ─────────────────────────────────────────────
-# Constants
-# ─────────────────────────────────────────────
+from config.features import FEATURE_NAMES, MODEL_FEATURE_NAMES
 
-FEATURE_COLS = [
-    "meeting_density",
-    "after_hours_ratio",
-    "response_latency_avg",
-    "focus_time_blocks",
-    "msg_volume_daily",
-    "msg_response_time",
-    "mention_load",
-    "commit_frequency",
-    "pr_review_load",
-    "context_switch_rate",
-    "after_hours_commits",
-    "hrv_avg",
-    "sleep_score",
-]
+# CSV column names (old naming from trained model)
+CSV_COLUMN_MAPPING = {
+    "after_hours_ratio": "after_hours_meetings",
+    "response_latency_avg": "email_response_latency",
+    "focus_time_blocks": "focus_blocks",
+    "msg_volume_daily": "message_volume",
+    "msg_response_time": "response_time_slack",
+    "mention_load": "mention_frequency",
+}
+
+# Canonical feature columns for internal use
+FEATURE_COLS = FEATURE_NAMES
+
+# Model feature columns (10-dim for GNN input)
+MODEL_FEATURE_COLS = MODEL_FEATURE_NAMES
 
 EPSILON = 1e-8  # prevents division by zero in normalisation
 
@@ -80,10 +78,11 @@ def load_features(features_path: str) -> pd.DataFrame:
         features_path: Path to features.csv
 
     Returns:
-        pd.DataFrame with columns [pseudo_id] + FEATURE_COLS
+        pd.DataFrame with columns [pseudo_id] + FEATURE_COLS (canonical names)
         All values guaranteed in [0, 1], no NaNs.
     """
     df = pd.read_csv(features_path)
+    df = df.rename(columns=CSV_COLUMN_MAPPING)
 
     # Keep only the most recent window per employee
     if "window_start" in df.columns:
@@ -102,7 +101,8 @@ def load_features(features_path: str) -> pd.DataFrame:
     # Apply org-level normalisation
     df = normalise_features(df)
 
-    return df[["pseudo_id"] + FEATURE_COLS]
+    wearable_cols = [c for c in ("hrv_avg", "sleep_score") if c in df.columns]
+    return df[["pseudo_id"] + FEATURE_COLS + wearable_cols]
 
 
 def get_feature_matrix(
