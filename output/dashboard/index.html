@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CognitiveSync — Burnout Risk Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ── Login ─────────────────────────────────────────────────── -->
+<div id="login-view">
+  <div class="login-card">
+    <h1>CognitiveSync</h1>
+    <p class="subtitle">Burnout Risk Platform</p>
+    <select id="role-select">
+      <option value="hr_admin">HR Admin</option>
+      <option value="hr_analyst">HR Analyst</option>
+      <option value="manager">Manager</option>
+    </select>
+    <button class="btn-primary" onclick="signIn()">Sign In</button>
+  </div>
+</div>
+
+<!-- ── App Shell ─────────────────────────────────────────────── -->
+<div id="app-view">
+  <header>
+    <h1>CognitiveSync</h1>
+    <div class="header-right">
+      <span class="role-badge" id="role-badge"></span>
+      <button class="btn-link" onclick="signOut()">Sign Out</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Employee panel (HR roles only) -->
+    <div class="panel" id="employee-panel">
+      <div class="panel-header">Employee Burnout Risk</div>
+      <div class="panel-body">
+        <div class="table-wrap">
+          <table id="employee-table">
+            <thead>
+              <tr>
+                <th>Employee ID</th>
+                <th>Risk Level</th>
+                <th>Score</th>
+                <th>Confidence</th>
+                <th>Cascade Risk</th>
+                <th>Top Signals</th>
+              </tr>
+            </thead>
+            <tbody id="employee-tbody">
+              <tr><td colspan="6"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Team summary (all roles) -->
+    <div class="panel" id="team-panel">
+      <div class="panel-header">Team Summaries</div>
+      <div class="panel-body">
+        <div class="cards-grid" id="team-cards">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cascade panel (HR roles only) -->
+    <div class="panel" id="cascade-panel">
+      <div class="panel-header">Cascade Propagation Risk</div>
+      <div class="panel-body">
+        <ul class="cascade-list" id="cascade-list">
+          <li><div class="spinner"></div></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Chat widget placeholder (Phase 07) -->
+    <div id="chat-placeholder"></div>
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

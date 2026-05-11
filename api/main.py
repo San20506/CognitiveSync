@@ -5,9 +5,11 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -15,9 +17,11 @@ from api.limiter import limiter
 from api.routes import (
     audit,
     cascade,
+    chat,
     config,
     demo,
     employees,
+    frontend,
     model,
     pipeline,
     profiles,
@@ -77,6 +81,13 @@ app.include_router(recommendations.router, prefix="/api/v1", tags=["recommendati
 app.include_router(config.router, prefix="/api/v1", tags=["config"])
 app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
 app.include_router(model.router, prefix="/api/v1", tags=["model"])
+app.include_router(chat.router, prefix="/api/v1/chat", tags=["chat"])
 
 if settings.demo_enabled:
     app.include_router(demo.router, tags=["demo"])
+
+app.include_router(frontend.router, tags=["dashboard"])
+
+_dashboard_dir = Path("output/dashboard")
+if _dashboard_dir.exists():
+    app.mount("/dashboard", StaticFiles(directory=str(_dashboard_dir), html=True), name="dashboard")
