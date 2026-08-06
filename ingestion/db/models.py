@@ -9,7 +9,8 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, Float, Index, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID as PGUUID
+from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -37,9 +38,7 @@ class FeatureVector(Base):
     feature_json: Mapped[dict] = mapped_column(JSONB, nullable=False)  # type: ignore[type-arg]
     is_imputed: Mapped[bool] = mapped_column(Boolean, default=False)
     data_completeness: Mapped[float | None] = mapped_column(Float, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=datetime.utcnow)
 
 
 class EdgeSignal(Base):
@@ -88,9 +87,7 @@ class BurnoutScore(Base):
     top_features: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # type: ignore[type-arg]
     team_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
     window_end: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=datetime.utcnow)
 
 
 class ScoringRun(Base):
@@ -114,9 +111,11 @@ class ScoringRun(Base):
 
 
 class AuditEvent(Base):
-    """Audit log — all sensitive events recorded here.
+    """Tamper-evident audit log — all sensitive events recorded here.
 
-    Schema: audit.events  |  Retention: 12 months minimum
+    Schema: audit.events  |  Retention: 12 months minimum (Art. 30)
+    Hash chaining: each row's event_hash = SHA-256(prev_hash | content),
+    making retroactive tampering mathematically detectable.
     """
 
     __tablename__ = "events"
@@ -128,7 +127,13 @@ class AuditEvent(Base):
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     event_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    actor_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    action: Mapped[str] = mapped_column(String(50), nullable=False)
+    resource_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    resource_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False)  # type: ignore[type-arg]
+    prev_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    event_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), default=datetime.utcnow, index=True
     )
@@ -148,9 +153,7 @@ class OrgConfig(Base):
     timezone: Mapped[str] = mapped_column(String(50), default="UTC")
     work_hours_start: Mapped[str] = mapped_column(String(5), default="09:00")
     work_hours_end: Mapped[str] = mapped_column(String(5), default="18:00")
-    created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=datetime.utcnow)
 
 
 class Employee(Base):
@@ -179,9 +182,7 @@ class Employee(Base):
     work_hours_start: Mapped[str] = mapped_column(String(5), default="09:00")
     work_hours_end: Mapped[str] = mapped_column(String(5), default="18:00")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    enrolled_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), default=datetime.utcnow
-    )
+    enrolled_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -220,6 +221,4 @@ class EmployeeProfile(Base):
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
-    created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=datetime.utcnow)

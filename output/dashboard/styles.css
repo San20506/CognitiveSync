@@ -298,6 +298,191 @@ tr:hover td { background: var(--bg); }
 /* ── Chat placeholder ────────────────────────────────────────── */
 #chat-placeholder { display: none; }
 
+/* ── SHAP explanation panel ──────────────────────────────────── */
+.shap-panel .panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.shap-close {
+  background: none;
+  border: none;
+  color: oklch(75% 0.005 260);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: .2rem .4rem;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color .15s;
+}
+.shap-close:hover { color: oklch(92% 0.005 260); }
+
+.shap-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.shap-employee-id {
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: .78rem;
+  color: oklch(72% 0.01 260);
+  background: oklch(20% 0.015 260);
+  padding: .25rem .6rem;
+  border-radius: 4px;
+}
+
+.shap-score-label {
+  font-size: .82rem;
+  color: oklch(68% 0.01 260);
+}
+
+.shap-score-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.shap-score-value.high  { color: oklch(68% 0.20 30); }
+.shap-score-value.medium { color: oklch(75% 0.18 80); }
+.shap-score-value.low   { color: oklch(70% 0.16 160); }
+
+.shap-chart {
+  background: oklch(11% 0.012 260);
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.shap-row {
+  display: grid;
+  grid-template-columns: 11rem 1fr 4.5rem;
+  align-items: center;
+  gap: .75rem;
+  min-height: 1.6rem;
+}
+
+.shap-feat-name {
+  font-size: .78rem;
+  color: oklch(75% 0.008 260);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shap-bar-track {
+  position: relative;
+  height: 10px;
+  background: oklch(18% 0.012 260);
+  border-radius: 3px;
+  overflow: visible;
+}
+
+.shap-bar {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 3px;
+  transition: width .35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.shap-bar.risk       { background: oklch(72% 0.18 65); left: 50%; }
+.shap-bar.protective { background: oklch(62% 0.16 240); right: 50%; }
+
+.shap-ci {
+  position: absolute;
+  top: 3px;
+  height: 4px;
+  border-radius: 2px;
+  opacity: .35;
+}
+.shap-ci.risk       { background: oklch(72% 0.18 65); left: 50%; }
+.shap-ci.protective { background: oklch(62% 0.16 240); right: 50%; }
+
+.shap-center-line {
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: oklch(35% 0.01 260);
+}
+
+.shap-value {
+  font-size: .75rem;
+  font-family: "SF Mono", "Fira Code", monospace;
+  text-align: right;
+}
+.shap-value.risk       { color: oklch(72% 0.18 65); }
+.shap-value.protective { color: oklch(62% 0.16 240); }
+
+.shap-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: .75rem;
+  padding-top: .75rem;
+  border-top: 1px solid oklch(20% 0.012 260);
+  font-size: .75rem;
+  color: oklch(55% 0.01 260);
+}
+
+.shap-legend {
+  display: flex;
+  gap: 1.25rem;
+  margin-bottom: .75rem;
+}
+
+.shap-legend-item {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .73rem;
+  color: oklch(65% 0.01 260);
+}
+
+.shap-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.shap-legend-dot.risk       { background: oklch(72% 0.18 65); }
+.shap-legend-dot.protective { background: oklch(62% 0.16 240); }
+
+.shap-panel .panel-body {
+  background: oklch(13% 0.012 260);
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 1.25rem 1.5rem 1.5rem;
+  color: oklch(88% 0.008 260);
+}
+
+.shap-panel {
+  border: 1px solid oklch(22% 0.015 260);
+}
+
+.shap-panel .panel-header {
+  background: oklch(16% 0.015 260);
+  color: oklch(88% 0.008 260);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.btn-explain {
+  font-size: .72rem;
+  padding: .2rem .55rem;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.btn-explain:hover {
+  background: oklch(96% 0.005 240);
+  border-color: var(--accent);
+}
+
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 640px) {
   main { padding: 1rem; }

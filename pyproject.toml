@@ -42,6 +42,7 @@ dependencies = [
     "matplotlib>=3.10.9",
     "seaborn>=0.13.2",
     "slowapi>=0.1.9",
+    "shap>=0.46",
 ]
 
 [project.optional-dependencies]

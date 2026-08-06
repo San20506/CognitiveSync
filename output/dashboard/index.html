@@ -47,10 +47,11 @@
                 <th>Confidence</th>
                 <th>Cascade Risk</th>
                 <th>Top Signals</th>
+                <th></th>
               </tr>
             </thead>
             <tbody id="employee-tbody">
-              <tr><td colspan="6"><div class="spinner"></div></td></tr>
+              <tr><td colspan="7"><div class="spinner"></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -74,6 +75,19 @@
         <ul class="cascade-list" id="cascade-list">
           <li><div class="spinner"></div></li>
         </ul>
+      </div>
+    </div>
+
+    <!-- SHAP explanation panel (HR roles only) -->
+    <div class="panel shap-panel" id="shap-panel" style="display:none">
+      <div class="panel-header">
+        <span>Feature Attribution</span>
+        <button class="shap-close" onclick="closeShapPanel()" aria-label="Close">✕</button>
+      </div>
+      <div class="panel-body">
+        <div id="shap-content">
+          <div class="spinner"></div>
+        </div>
       </div>
     </div>
 

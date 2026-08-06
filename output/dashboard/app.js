@@ -113,6 +113,7 @@ function renderEmployeeTable(scores) {
     const ci = (s.confidence_low != null && s.confidence_high != null)
       ? `[${fmtScore(s.confidence_low)}, ${fmtScore(s.confidence_high)}]`
       : '—';
+    const eid = s.pseudo_id ? JSON.stringify(s.pseudo_id) : 'null';
 
     return `<tr>
       <td><code style="font-size:.8rem">${shortId(s.pseudo_id)}</code></td>
@@ -126,6 +127,7 @@ function renderEmployeeTable(scores) {
       <td style="color:var(--muted);font-size:.82rem">${ci}</td>
       <td>${fmtScore(s.cascade_risk)}</td>
       <td><div class="signals">${signals}</div></td>
+      <td><button class="btn-explain" onclick="fetchExplanation(${eid})">Explain</button></td>
     </tr>`;
   }).join('');
 }
@@ -159,6 +161,78 @@ function renderTeamCards(teams) {
       <div class="team-meta">${members} member${members !== 1 ? 's' : ''} · ${level ?? '—'} risk</div>
     </div>`;
   }).join('');
+}
+
+// ── SHAP explanation ─────────────────────────────────────────────
+async function fetchExplanation(employeeId) {
+  const panel = document.getElementById('shap-panel');
+  const content = document.getElementById('shap-content');
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  content.innerHTML = '<div class="spinner"></div>';
+
+  try {
+    const data = await apiFetch(`/api/v1/explain/${employeeId}`);
+    renderShapWaterfall(data);
+  } catch (err) {
+    content.innerHTML = `<p class="state-msg" style="color:var(--risk-high)">${err.message}</p>`;
+  }
+}
+
+function closeShapPanel() {
+  document.getElementById('shap-panel').style.display = 'none';
+}
+
+function renderShapWaterfall(data) {
+  const content = document.getElementById('shap-content');
+  const features = data.features ?? [];
+  const score = data.model_output ?? 0;
+  const base  = data.base_value ?? 0;
+  const level = riskLevel(score);
+  const cls   = riskClass(level);
+  const eid   = data.pseudo_id ? String(data.pseudo_id).slice(0, 8) + '…' : '—';
+
+  // Find max |shap_value| for proportional bar widths (each half = 50% of track)
+  const maxAbs = features.reduce((m, f) => Math.max(m, Math.abs(f.shap_value)), 1e-9);
+
+  const rows = features.map(f => {
+    const pct = Math.min(48, (Math.abs(f.shap_value) / maxAbs) * 48);  // max 48% of track half
+    const ciMaxAbs = Math.max(Math.abs(f.confidence_low), Math.abs(f.confidence_high), 1e-9);
+    const ciPct = Math.min(48, (ciMaxAbs / maxAbs) * 48);
+    const dir = f.direction;
+    const val = f.shap_value >= 0 ? `+${f.shap_value.toFixed(3)}` : f.shap_value.toFixed(3);
+    const label = f.feature.replace(/_/g, ' ');
+
+    return `<div class="shap-row">
+      <span class="shap-feat-name">${label}</span>
+      <div class="shap-bar-track">
+        <div class="shap-center-line"></div>
+        <div class="shap-ci ${dir}" style="width:${ciPct}%"></div>
+        <div class="shap-bar ${dir}" style="width:${pct}%"></div>
+      </div>
+      <span class="shap-value ${dir}">${val}</span>
+    </div>`;
+  }).join('');
+
+  content.innerHTML = `
+    <div class="shap-header">
+      <span class="shap-employee-id">${eid}</span>
+      <span class="shap-score-label">Burnout score</span>
+      <span class="shap-score-value ${cls}">${score.toFixed(3)}</span>
+    </div>
+    <div class="shap-legend">
+      <span class="shap-legend-item">
+        <span class="shap-legend-dot risk"></span>Risk factor
+      </span>
+      <span class="shap-legend-item">
+        <span class="shap-legend-dot protective"></span>Protective
+      </span>
+    </div>
+    <div class="shap-chart">${rows}</div>
+    <div class="shap-footer">
+      <span>Base value: ${base.toFixed(3)}</span>
+      <span>f(x) = ${score.toFixed(3)}</span>
+    </div>`;
 }
 
 // ── Cascade panel ────────────────────────────────────────────────

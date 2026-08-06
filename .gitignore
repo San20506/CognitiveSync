@@ -28,3 +28,7 @@ CognitiveSync/components/Counter.vue
 .claude/plan/cognitiveSync-full-build.md
 .claude/settings.local.json
 .gstack/browse-network.log
+
+# Python bytecode
+__pycache__/
+*.pyc
